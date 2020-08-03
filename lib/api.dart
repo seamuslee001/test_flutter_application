@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:flutter/foundation.dart';
 
@@ -20,8 +21,8 @@ ValueNotifier<GraphQLClient> client = ValueNotifier(
 );
 
 final String query = """
-query getSearchResults(\$conditions: [ConditionInput]!, \$languages: [String]!, \$fullText: FulltextInput, \$conditionGroup: ConditionGroupInput) {
-  searchAPISearch(index_id: "default", language: \$languages, conditions: \$conditions, condition_group: \$conditionGroup, fulltext: \$fullText, facets: [{field: "type", min_count: 1, limit: 0, operator: "=", missing: false}, {field: "field_chapter_reference", min_count: 1, limit: 0, operator: "=", missing: false}]) {
+query getSearchResults(\$languages: [String]!, \$fullText: FulltextInput, \$conditionGroup: ConditionGroupInput) {
+  searchAPISearch(index_id: "default", language: \$languages, condition_group: \$conditionGroup, fulltext: \$fullText, facets: [{field: "type", min_count: 1, limit: 0, operator: "=", missing: false}, {field: "field_chapter_reference", min_count: 1, limit: 0, operator: "=", missing: false}]) {
     documents {
       ... on DefaultDoc {
         type
@@ -55,35 +56,33 @@ query getSearchResults(\$conditions: [ConditionInput]!, \$languages: [String]!, 
 }
 """;
 
+queryVariables(String $value, String $name) =>
+    {"name": $name, "value": $value, "operator": "="};
+
+buildConditionGroup(Map $queryConditions, String $conjunction) {
+  var conditions = new List();
+  $queryConditions.forEach((key, value) {
+    conditions.add(queryVariables(value, key));
+  });
+  var conditionGroup = {
+    "conjunction": $conjunction,
+    "conditions": conditions,
+  };
+  return conditionGroup;
+}
+
 final QueryOptions options = QueryOptions(
   documentNode: gql(query),
   variables: <String, dynamic>{
     "conditionGroup": {
       "conjunction": "AND",
       "groups": [
-        {
-          "conjunction": "AND",
-          "conditions": [
-            {"name": "type", "value": "Service Listing", "operator": "="},
-            {
-              "name": "custom_896",
-              "value": "Accepting new clients",
-              "operator": "="
-            }
-          ]
-        },
-        {
-          "conjunction": "OR",
-          "conditions": [
-            {"name": "custom_897", "operator": "=", "value": "At work address"}
-          ]
-        },
-        {
-          "conjunction": "OR",
-          "conditions": [
-            {"name": "custom_898", "operator": "=", "value": "Preschool"}
-          ]
-        }
+        buildConditionGroup(
+          {"type": "Service Listing", "custom_896": "Accepting new clients"},
+          "AND"
+        ),
+        buildConditionGroup({"custom_897": "At work address"}, "OR"),
+        buildConditionGroup({"custom_898": "Preschool"}, "OR"),
       ]
     },
     "languages": ["en", "und"],

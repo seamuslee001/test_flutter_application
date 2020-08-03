@@ -1,3 +1,5 @@
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:test_flutter_application/api.dart';
@@ -68,10 +70,18 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  var acceptingNewClients = "Yes";
+  var servicesProvided = "At work address";
+  var ageGroup = "Preschool";
+  var type = "Service Listing";
+
   @override
   Widget build(BuildContext context) {
     return Query(
-        options: options,
+        options: QueryOptions(
+          documentNode: gql(query),
+          variables: generateVariables()
+        ),
         builder: (QueryResult result,
             {VoidCallback refetch, FetchMore fetchMore}) {
           return Scaffold(
@@ -79,75 +89,75 @@ class _MyHomePageState extends State<MyHomePage> {
                 title: Text("TODO App With GraphQL"),
               ),
               body: Center(
-                  child: result.hasException
-                      ? Text(result.exception.toString())
-                      : result.loading
-                      ? CircularProgressIndicator()
-                      : ListView.builder(
-                  itemCount: result.data["searchAPISearch"]["documents"].length,
-                  itemBuilder: (BuildContext context, int index) {
-                    final list = result.data["searchAPISearch"]["documents"][index];
-                    final title = list["title"] ?? list["organization_name"] ?? '';
-                    return ListTile (
-                      onTap: () {},
-                      title: Container(
-                        padding: EdgeInsets.all(5.0),
-                        height: 35.0,
-                        child: Text(
-                          title,
-                          style: TextStyle(
-                              color: Colors.grey[850],
-                              fontFamily: 'Yekan',
-                              fontSize: 18.0),
-                        ),
-                      ),
-                      subtitle: Text(
-                        list["custom_893"] ?? '',
-                        style: TextStyle(
-                            color: Colors.redAccent,
-                            fontFamily: 'Yekan',
-                            fontSize: 15.0),
-                      ),
-                      trailing: Icon(Icons.arrow_right),
-                      contentPadding: EdgeInsets.only(top: 3.5, bottom: 3.5),
-                   );
-                 }
-               )
+                child: result.hasException
+                    ? Text(result.exception.toString())
+                    : result.loading
+                    ? CircularProgressIndicator()
+                    : SearchResult(list: result.data),
               ),
               floatingActionButton: FloatingActionButton(
-                onPressed: _incrementCounter,
+                onPressed: () {
+                  refetch();
+                },
                 tooltip: 'New Task',
                 child: Icon(Icons.add),
               ));
         });
   }
+
+  generateVariables() {
+    return {
+      "conditionGroup": {
+        "conjunction": "AND",
+        "groups": [
+          buildConditionGroup(
+              {"type": type, "custom_896": "Accepting new clients"}, "AND"),
+          buildConditionGroup({"custom_897": servicesProvided}, "OR"),
+          buildConditionGroup({"custom_898": ageGroup}, "OR"),
+        ],
+      },
+      "languages": ["en", "und"],
+      "conditions": [],
+    };
+  }
 }
 
-  class TaskList extends StatelessWidget {
-  TaskList({@required this.list, @required this.onRefresh});
-
+class SearchResult extends StatelessWidget {
+  SearchResult({@required this.list});
   final list;
-  final onRefresh;
 
   @override
   Widget build(BuildContext context) {
-  return Mutation(
-    options: MutationOptions(documentNode: gql(query)),
-    builder: (RunMutation runMutation, QueryResult result) {
-      return ListView.builder(
-        itemCount: this.list.length,
-        itemBuilder: (context, index) {
-          final task = this.list[index];
-          return CheckboxListTile(
-              title: Text(task['title']),
-              value: task['completed'],
-              onChanged: (_) {runMutation({'id': index + 1, 'completed': !task['completed']});
-              onRefresh();
-              });
-            },
+    return ListView.builder(
+        itemCount: list["searchAPISearch"]["documents"].length,
+        itemBuilder: (BuildContext context, int index) {
+          final item = list["searchAPISearch"]["documents"][index];
+          final title = item["title"] ?? item["organization_name"] ?? '';
+          return ListTile (
+            onTap: () {},
+            title: Container(
+              padding: EdgeInsets.all(5.0),
+              height: 35.0,
+              child: Text(
+                title,
+                style: TextStyle(
+                    color: Colors.grey[850],
+                    fontFamily: 'Yekan',
+                    fontSize: 18.0),
+              ),
+            ),
+            subtitle: Text(
+              item["custom_893"] ?? '',
+              style: TextStyle(
+                  color: Colors.redAccent,
+                  fontFamily: 'Yekan',
+                  fontSize: 15.0),
+            ),
+            trailing: Icon(Icons.arrow_right),
+            contentPadding: EdgeInsets.only(top: 3.5, bottom: 3.5),
           );
-        },
-      );
-    }
+        }
+    );
   }
+}
 
