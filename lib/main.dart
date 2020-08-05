@@ -1,8 +1,7 @@
-import 'dart:ffi';
-
 import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:test_flutter_application/api.dart';
+import 'package:html/parser.dart';
 
 void main() {
   runApp(MyApp());
@@ -73,14 +72,16 @@ class _MyHomePageState extends State<MyHomePage> {
   var acceptingNewClients = "Yes";
   var servicesProvided = "At work address";
   var ageGroup = "Preschool";
-  var type = "Service Listing";
+  var type = "learning_resource";
+  var appLanguage = 'en';
 
   @override
   Widget build(BuildContext context) {
     return Query(
         options: QueryOptions(
           documentNode: gql(query),
-          variables: generateVariables()
+          variables: queryVariables(appLanguage, type, servicesProvided,
+              ageGroup, acceptingNewClients)
         ),
         builder: (QueryResult result,
             {VoidCallback refetch, FetchMore fetchMore}) {
@@ -105,21 +106,22 @@ class _MyHomePageState extends State<MyHomePage> {
         });
   }
 
-  generateVariables() {
-    return {
-      "conditionGroup": {
-        "conjunction": "AND",
-        "groups": [
-          buildConditionGroup(
-              {"type": type, "custom_896": "Accepting new clients"}, "AND"),
-          buildConditionGroup({"custom_897": servicesProvided}, "OR"),
-          buildConditionGroup({"custom_898": ageGroup}, "OR"),
-        ],
-      },
-      "languages": ["en", "und"],
-      "conditions": [],
+  queryVariables(language, types, servicesProvided, ageGroupsServed,
+    acceptingNewClients) {
+    var conditionGroupGroups = new List();
+    conditionGroupGroups.add(buildConditionGroup({"type": types}, "OR"));
+    var conditionGroup = {
+      "conjunction": "AND",
+      'groups': conditionGroupGroups,
     };
+    var variables = {
+      "conditions": [],
+      "languages": [language, "und"],
+      'conditionGroup': conditionGroup,
+    };
+    return variables;
   }
+
 }
 
 class SearchResult extends StatelessWidget {
@@ -132,14 +134,13 @@ class SearchResult extends StatelessWidget {
         itemCount: list["searchAPISearch"]["documents"].length,
         itemBuilder: (BuildContext context, int index) {
           final item = list["searchAPISearch"]["documents"][index];
-          final title = item["title"] ?? item["organization_name"] ?? '';
           return ListTile (
             onTap: () {},
             title: Container(
               padding: EdgeInsets.all(5.0),
               height: 35.0,
               child: Text(
-                title,
+                getTitle(item),
                 style: TextStyle(
                     color: Colors.grey[850],
                     fontFamily: 'Yekan',
@@ -147,17 +148,28 @@ class SearchResult extends StatelessWidget {
               ),
             ),
             subtitle: Text(
-              item["custom_893"] ?? '',
-              style: TextStyle(
-                  color: Colors.redAccent,
-                  fontFamily: 'Yekan',
-                  fontSize: 15.0),
+              getDescription(item),
             ),
             trailing: Icon(Icons.arrow_right),
             contentPadding: EdgeInsets.only(top: 3.5, bottom: 3.5),
           );
         }
     );
+  }
+  
+  getTitle(item) {
+    return item['title'] ?? item["organization_name"] ?? '';
+  }
+
+  String getDescription(item) {
+    var body = parse(item['custom_893'] ?? item['description'] ?? item['body'] ?? '');
+    return truncateWithEllipsis(200, parse(body.body.text).documentElement.text);
+  }
+
+  String truncateWithEllipsis(int cutoff, String myString) {
+    return (myString.length <= cutoff)
+        ? myString
+        : '${myString.substring(0, cutoff)}...';
   }
 }
 

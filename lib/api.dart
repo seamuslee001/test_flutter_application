@@ -43,6 +43,7 @@ query getSearchResults(\$languages: [String]!, \$fullText: FulltextInput, \$cond
         custom_911
         custom_904
         field_chapter_reference
+        body
       }
     }
     facets {
@@ -56,13 +57,16 @@ query getSearchResults(\$languages: [String]!, \$fullText: FulltextInput, \$cond
 }
 """;
 
-queryVariables(String $value, String $name) =>
+queryVariable(String $value, String $name) =>
     {"name": $name, "value": $value, "operator": "="};
 
 buildConditionGroup(Map $queryConditions, String $conjunction) {
   var conditions = new List();
   $queryConditions.forEach((key, value) {
-    conditions.add(queryVariables(value, key));
+    var valueConditions = value.split(',');
+    valueConditions.forEach((v) {
+      conditions.add(queryVariable(v, key));
+    });
   });
   var conditionGroup = {
     "conjunction": $conjunction,
@@ -70,22 +74,3 @@ buildConditionGroup(Map $queryConditions, String $conjunction) {
   };
   return conditionGroup;
 }
-
-final QueryOptions options = QueryOptions(
-  documentNode: gql(query),
-  variables: <String, dynamic>{
-    "conditionGroup": {
-      "conjunction": "AND",
-      "groups": [
-        buildConditionGroup(
-          {"type": "Service Listing", "custom_896": "Accepting new clients"},
-          "AND"
-        ),
-        buildConditionGroup({"custom_897": "At work address"}, "OR"),
-        buildConditionGroup({"custom_898": "Preschool"}, "OR"),
-      ]
-    },
-    "languages": ["en", "und"],
-    "conditions": []
-  },
-);
